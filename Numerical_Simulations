@@ -1,0 +1,77 @@
+library(PBSddesolve)
+
+yprime <- function(t,y,parms) {
+  if (t < parms$tau)
+    lag <- parms$initial
+  else
+    lag <- pastvalue(t - parms$tau)
+  y1 <- D(t)*s0(t)-D(t)*y[1]-(mM*y[1]/(ks+y[1]))*y[2] 
+  y2 <- (mM*lag[1]/(ks+lag[1]))*lag[2]*exp(-(d(t)-d(t-parms$tau)))-D(t)*y[2]
+  y3 <- D(t)*s0(t)-D(t)*y[3]-(mM*y[3]/(ks+y[3]))*y[4] 
+  y4 <- (mM*lag[3]/(ks+lag[3]))*lag[4]*exp(-(d(t)-d(t-parms$tau)))-D(t)*y[4]
+  y5 <- D(t)*s0(t)-D(t)*y[5]-(mM*y[5]/(ks+y[5]))*y[6] 
+  y6 <- (mM*lag[5]/(ks+lag[5]))*lag[6]*exp(-(d(t)-d(t-parms$tau)))-D(t)*y[6]
+  return(c(y1,y2,y3,y4,y5,y6))
+}
+
+mM <- 1.6 # maximal growth rate
+ks <- 0.1  # half-saturation
+t0 <-  0# initial time 
+t1 <-  50# final time 1  
+t2 <-  100# final time 2
+I0<-t1*5+1
+I1<-t1*10+1
+II0<-t2*5+1
+II1<-t2*10+1
+s0 <- function(t) 100+10*cos(2*pi*t/5)
+D<- function(t) 0.6 -0.01*sin(2*pi*t/5)  # dilution rates
+d<- function(t) 0.6*t -(0.01*5/(2*pi))*cos(2*pi*t/5)  # dilution rates
+library(ggplot2)
+library(reshape2)
+library(latex2exp)
+library(gridExtra)
+
+lista_tau <- seq(1,2,0.2)
+for (i in lista_tau){
+  yinit <- c(20,3,35,1.5,50,0.8)
+  parms <- list(tau=i, initial=yinit, D=1 )
+  out0 <- dde(y=yinit, func=yprime, parms=parms, times=seq(t0,t1,0.1), hbsize=20000)  
+  M<-cbind(out0$time, out0$y1, out0$y2)
+  Ma<-M[I0:I1,1:3]
+  M1<-cbind(out0$time, out0$y3, out0$y4)
+  M1a<-M1[I0:I1,1:3]
+  M2<-cbind(out0$time, out0$y5, out0$y6)
+  M2a<-M2[I0:I1,1:3]
+  outdf=data.frame(M)
+  outdf1=data.frame(M1)
+  outdf2=data.frame(M2)
+  outdfa=data.frame(Ma)
+  outdf1a=data.frame(M1a)
+  outdf2a=data.frame(M2a)
+  names(outdf)=c("Time","Nitrate", "Dunaliella tertiolecta")
+  names(outdf1)=c("Time","Nitrate", "Dunaliella tertiolecta")
+  names(outdf2)=c("Time","Nitrate", "Dunaliella tertiolecta")
+  names(outdfa)=c("Time","Nitrate", "Dunaliella tertiolecta")
+  names(outdf1a)=c("Time","Nitrate", "Dunaliella tertiolecta")
+  names(outdf2a)=c("Time","Nitrate", "Dunaliella tertiolecta")
+  tmppred=melt(outdf,id.var=c("Time"),variable.name="Patchs",value.name="Densities")
+  tmppred1=melt(outdf1,id.var=c("Time"),variable.name="Patchs",value.name="Densities")
+  tmppred2=melt(outdf2,id.var=c("Time"),variable.name="Patchs",value.name="Densities")
+  tmppreda=melt(outdfa,id.var=c("Time"),variable.name="Patchs",value.name="Densities")
+  tmppred1a=melt(outdf1a,id.var=c("Time"),variable.name="Patchs",value.name="Densities")
+  tmppred2a=melt(outdf2a,id.var=c("Time"),variable.name="Patchs",value.name="Densities")
+  base1=ggplot(data=tmppred,aes(x=Time,y=Densities)) + geom_path(size=1,colour="black")
+  base1=base1+geom_path(data=tmppred1,colour="red",size=1,aes(x=Time,y=Densities)) 
+  base1=base1+geom_path(data=tmppred2,colour="green",size=1, aes(x=Time,y=Densities))
+  base1=base1 +facet_wrap(~Patchs, scales ="free_y", ncol = 1)
+  labelled1=base1+ 
+    xlab(TeX(r"(Time (d) )")) +
+    ylab(TeX(r"(Densities ($\mu$ Mol $L^{-1}$))"))
+  styled1=labelled1+theme_bw()+theme(
+    plot.title = element_text(size=12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10)
+  )
+  styled1
+  grid.arrange(styled1,nrow=1)
+}
