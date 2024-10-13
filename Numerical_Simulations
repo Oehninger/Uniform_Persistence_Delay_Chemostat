@@ -17,8 +17,8 @@ yprime <- function(t,y,parms) {
 mM <- 1.6 # maximal growth rate
 ks <- 0.1  # half-saturation
 t0 <-  0# initial time 
-t1 <-  50# final time 1  
-t2 <-  100# final time 2
+t1 <-  100# final time 1  
+t2 <-  200# final time 2
 I0<-t1*5+1
 I1<-t1*10+1
 II0<-t2*5+1
@@ -31,7 +31,7 @@ library(reshape2)
 library(latex2exp)
 library(gridExtra)
 
-lista_tau <- seq(1,2,0.2)
+lista_tau <- c(0.8,1.0,1.2,1.4,1.6,1.8,2.0,2.2)
 for (i in lista_tau){
   yinit <- c(20,3,35,1.5,50,0.8)
   parms <- list(tau=i, initial=yinit, D=1 )
@@ -67,11 +67,21 @@ for (i in lista_tau){
   labelled1=base1+ 
     xlab(TeX(r"(Time (d) )")) +
     ylab(TeX(r"(Densities ($\mu$ Mol $L^{-1}$))"))
-  styled1=labelled1+theme_bw()+theme(
-    plot.title = element_text(size=12),
-    axis.text = element_text(size = 10),
-    axis.title = element_text(size = 10)
+  styled1=labelled1+theme_bw(
+    base_size = 20)+theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12)
   )
   styled1
   grid.arrange(styled1,nrow=1)
+ 
+  pdf_filename <- paste0("plot_", i, ".pdf")
+ 
+  pdf(pdf_filename)
+  
+  grid.arrange(styled1, nrow = 1)
+  
+  dev.off()
+ 
+  print(paste("File saved as ", pdf_filename))
 }
