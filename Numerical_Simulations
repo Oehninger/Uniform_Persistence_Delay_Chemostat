@@ -14,11 +14,27 @@ yprime <- function(t,y,parms) {
   return(c(y1,y2,y3,y4,y5,y6))
 }
 
+zprime <- function(t,z) {
+    z1 <- D(t)*s0(t)-D(t)*z[1]
+  return(c(z1))
+}
+
+cprime <- function(t,y,parms) {
+  if (t < parms$tau)
+    lag <- parms$initial
+  else
+    lag <- pastvalue(t - parms$tau)
+  y1 <- (mM*z_function(t-parms$tau)/(ks+z_function(t-parms$tau)))*lag[1]*exp(-(d(t)-d(t-parms$tau)))-D(t)*y[1]
+  return(c(y1))
+}
+
 mM <- 1.6 # maximal growth rate
 ks <- 0.1  # half-saturation
 t0 <-  0# initial time 
 t1 <-  100# final time 1  
 t2 <-  200# final time 2
+t3 <-  1000#final time 3
+
 I0<-t1*5+1
 I1<-t1*10+1
 II0<-t2*5+1
@@ -30,6 +46,24 @@ library(ggplot2)
 library(reshape2)
 library(latex2exp)
 library(gridExtra)
+library(splines)
+
+#Wash out solution
+
+zinit <- 20
+outz <- dde(y=zinit, func=zprime, times=seq(t0,t3,0.1), hbsize=20000)
+
+Mz<-cbind(outz$time, outz$y1)
+M1z<-Mz[9951:10001,2]
+
+t<- seq(0,5,0.1)
+
+modelz<- splinefun(t,M1z,method = "periodic") 
+
+z_function<-function(t){
+  return(modelz(t))
+}
+
 
 lista_tau <- c(0.8,1.0,1.2,1.4,1.6,1.8,2.0,2.2)
 for (i in lista_tau){
@@ -74,14 +108,37 @@ for (i in lista_tau){
   )
   styled1
   grid.arrange(styled1,nrow=1)
- 
+
+  
   pdf_filename <- paste0("plot_", i, ".pdf")
- 
+  
   pdf(pdf_filename)
   
   grid.arrange(styled1, nrow = 1)
   
   dev.off()
- 
+  
   print(paste("File saved as ", pdf_filename))
+  
+  cinit <- 1
+  outc <- dde(y=cinit, func=cprime, parms=parms, times=seq(0,105,0.1), hbsize=20000)  
+  Mc<-cbind(outc$time, outc$y1)
+  M1c<-Mc[0:1051,2]
+  
+  t<- seq(0,105,0.1)
+  
+  modelc<- splinefun(t,M1c,method = "natural") 
+  
+  c_function<-function(t){
+    return(modelc(t))
+  }
+  phi_function<-function(t){ 
+    return((c_function(t)/c_function(t+i))*exp(-(d(t+i)-d(t))))
+  }
+  # Average
+  f <- function(t) { (mM*z_function(t)/(ks+z_function(t)))*phi_function(t) }
+   
+  average <- integrate(f, lower = 100, upper = 105)
+   
+  print(average$value/5)
 }
